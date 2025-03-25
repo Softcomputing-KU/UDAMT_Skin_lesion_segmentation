@@ -1,0 +1,83 @@
+import torch
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from torchvision.models import resnet50, ResNet50_Weights
+from torch.nn import functional as F
+
+# 定义 Grad-CAM 类
+class GradCAM:
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+        self.gradients = None
+        self.activation = None
+        self.hook_layers()
+
+    def hook_layers(self):
+        def forward_hook(module, input, output):
+            self.activation = output
+
+        def backward_hook(module, grad_in, grad_out):
+            self.gradients = grad_out[0]
+
+        self.target_layer.register_forward_hook(forward_hook)
+        self.target_layer.register_full_backward_hook(backward_hook)  # 修复 PyTorch 警告
+
+    def generate_cam(self, input_tensor, class_idx=None):
+        output = self.model(input_tensor)
+        if class_idx is None:
+            class_idx = torch.argmax(output)
+
+        self.model.zero_grad()
+        output[:, class_idx].backward(retain_graph=True)
+
+        weights = torch.mean(self.gradients, dim=[2, 3], keepdim=True)
+        cam = torch.sum(weights * self.activation, dim=1)
+        cam = F.relu(cam)
+
+        cam = cam.squeeze().detach().cpu().numpy()
+        cam = cv2.resize(cam, (input_tensor.shape[2], input_tensor.shape[3]))
+        cam = (cam - np.min(cam)) / (np.max(cam) - np.min(cam))  # 归一化处理
+        return cam
+
+# 加载 ResNet50 预训练模型（修复权重加载方式）
+model = resnet50(weights=ResNet50_Weights.DEFAULT)
+model.eval()  # 设为推理模式
+target_layer = model.layer4[-1]  # 选择目标层
+
+# 读取并预处理图像
+image_path = "sample_image.jpg"  # 替换为实际图片路径
+image = cv2.imread(image_path)
+
+if image is None:
+    raise FileNotFoundError(f"图像文件 '{image_path}' 未找到，请检查路径是否正确。")
+
+image = cv2.resize(image, (224, 224))
+image = image.astype(np.float32) / 255.0  # 归一化到 [0,1]
+input_tensor = torch.tensor(image).permute(2, 0, 1).unsqueeze(0)  # 调整维度
+
+# 计算 Grad-CAM 热图
+gradcam = GradCAM(model, target_layer)
+heatmap = gradcam.generate_cam(input_tensor)
+
+# 叠加 Grad-CAM 热图到原始图像
+heatmap_colored = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+
+# **修复 OpenCV 数据类型错误**
+image_uint8 = (image * 255).astype(np.uint8)  # 归一化到 0-255，并转换为 uint8
+overlay = cv2.addWeighted(cv2.cvtColor(image_uint8, cv2.COLOR_RGB2BGR), 0.5, heatmap_colored, 0.5, 0)
+
+# 显示结果
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.imshow(image_uint8)
+plt.title("Input image")
+plt.axis("off")
+
+plt.subplot(1, 2, 2)
+plt.imshow(overlay)
+plt.title("Grad-CAM image")
+plt.axis("off")
+
+plt.show()

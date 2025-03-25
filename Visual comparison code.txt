@@ -1,0 +1,36 @@
+from PIL import Image, ImageDraw
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load the images in grayscale
+gt_image = Image.open("ISIC_0022657_segmentation.png").convert("L")  # Ground truth
+our_image = Image.open("ISIC_0022657_segmentation111.jpg").convert("L")  # Our segmentation
+baseline_image = Image.open("ISIC_0022657_segmentation222.jpg").convert("L")  # Baseline segmentation
+
+# Convert images to numpy arrays
+gt_array = np.array(gt_image)
+our_array = np.array(our_image)
+baseline_array = np.array(baseline_image)
+
+# Identify regions where "our" segmentation matches the ground truth and "baseline" does not
+better_regions = np.logical_and(our_array == gt_array, baseline_array != gt_array)
+
+# Create an RGB version of the "our segmentation" image for visualization
+highlighted_image = np.zeros((*our_array.shape, 3), dtype=np.uint8)
+highlighted_image[..., 0] = our_array  # Use the original segmentation result as base (in grayscale)
+
+# Highlight regions where "our segmentation" is better than the baseline
+highlighted_image[better_regions] = [0, 255, 0]  # Green highlights for better regions
+
+# Convert the highlighted array back to an image
+highlighted_image = Image.fromarray(highlighted_image)
+
+# Save the result
+highlighted_image.save("highlighted_comparison.png")  # Save to the current directory
+
+# Optionally display the result
+plt.figure(figsize=(10, 10))
+plt.imshow(highlighted_image)
+plt.axis("off")
+plt.title("Highlighted Regions Where 'Our' is Better Than Baseline")
+plt.show()

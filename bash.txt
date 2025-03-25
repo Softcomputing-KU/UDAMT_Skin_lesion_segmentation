@@ -1,0 +1,33 @@
+├── data/
+│   ├── __init__.py
+│   ├── isic2016.py
+│   ├── isic2017.py
+│   └── isic2018.py
+├── models/
+│   ├── __init__.py
+│   ├── dual_head_unet.py
+│   ├── teacher_student.py
+│   └── uncertainty.py
+├── losses/
+│   ├── __init__.py
+│   ├── supervised_loss.py
+│   ├── auxiliary_loss.py
+│   └── pseudo_loss.py
+├── utils/
+│   ├── __init__.py
+│   ├── augmentations.py
+│   ├── metrics.py
+│   └── visualization.py
+├── configs/
+│   ├── __init__.py
+│   └── udamt.yaml
+├── checkpoints/
+│   └── README.md
+├── results/
+│   ├── logs/
+│   └── visualization/
+├── train.py
+├── evaluate.py
+├── requirements.txt
+└── README.md
+
