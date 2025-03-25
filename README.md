@@ -1,4 +1,4 @@
-# UDAMT: Uncertainty-Driven Auxiliary Mean Teacher for Skin Lesion Segmentation
+## A Dual-Headed Teacher–Student Framework with an Uncertainty-Guided Mechanism for Semi-Supervised Skin Lesion Segmentation
 
 ## Requirements
 - Python 3.8
